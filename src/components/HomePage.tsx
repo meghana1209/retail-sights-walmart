@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingBag, BarChart3, Users, TrendingUp, Shield, Truck } from 'lucide-react';
+import walmartHeroImage from '@/assets/walmart-hero.jpg';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -41,8 +42,18 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary via-primary to-secondary text-white py-20">
-        <div className="container mx-auto px-4 text-center">
+      <section className="relative bg-gradient-to-br from-primary via-primary to-secondary text-white py-20 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={walmartHeroImage} 
+            alt="Walmart shopping experience" 
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/70 to-secondary/80"></div>
+        </div>
+        
+        <div className="container mx-auto px-4 text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
               Save Money. <span className="text-secondary">Live Better.</span>
@@ -75,7 +86,7 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
         </div>
         
         {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-5">
           <div className="absolute -top-4 -right-4 w-72 h-72 bg-secondary/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-8 -left-8 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
         </div>

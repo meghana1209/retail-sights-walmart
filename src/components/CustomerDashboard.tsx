@@ -7,6 +7,14 @@ import ProductCard from './ProductCard';
 import { Search, Filter, SlidersHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Import product images
+import iphoneImage from '@/assets/iphone-15-pro-max.jpg';
+import samsungTvImage from '@/assets/samsung-tv.jpg';
+import nikeAirMaxImage from '@/assets/nike-air-max.jpg';
+import kitchenaidMixerImage from '@/assets/kitchenaid-mixer.jpg';
+import organicMilkImage from '@/assets/organic-milk.jpg';
+import dysonVacuumImage from '@/assets/dyson-vacuum.jpg';
+
 const CustomerDashboard = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +28,7 @@ const CustomerDashboard = () => {
       name: 'Apple iPhone 15 Pro Max 256GB Natural Titanium',
       price: 999.99,
       originalPrice: 1199.99,
-      image: '/placeholder.svg',
+      image: iphoneImage,
       rating: 4.8,
       reviews: 1247,
       category: 'Electronics',
@@ -31,7 +39,7 @@ const CustomerDashboard = () => {
       name: 'Samsung 65" 4K QLED Smart TV with HDR',
       price: 799.99,
       originalPrice: 1099.99,
-      image: '/placeholder.svg',
+      image: samsungTvImage,
       rating: 4.6,
       reviews: 893,
       category: 'Electronics',
@@ -42,7 +50,7 @@ const CustomerDashboard = () => {
       name: 'Nike Air Max 270 Running Shoes - Black/White',
       price: 129.99,
       originalPrice: 149.99,
-      image: '/placeholder.svg',
+      image: nikeAirMaxImage,
       rating: 4.5,
       reviews: 567,
       category: 'Clothing & Shoes',
@@ -53,7 +61,7 @@ const CustomerDashboard = () => {
       name: 'KitchenAid Stand Mixer - 5 Quart Artisan Series',
       price: 299.99,
       originalPrice: 379.99,
-      image: '/placeholder.svg',
+      image: kitchenaidMixerImage,
       rating: 4.9,
       reviews: 2134,
       category: 'Home & Kitchen',
@@ -63,7 +71,7 @@ const CustomerDashboard = () => {
       id: '5',
       name: 'Great Value Organic Whole Milk - 1 Gallon',
       price: 4.98,
-      image: '/placeholder.svg',
+      image: organicMilkImage,
       rating: 4.3,
       reviews: 445,
       category: 'Groceries',
@@ -74,7 +82,7 @@ const CustomerDashboard = () => {
       name: 'Dyson V15 Detect Cordless Vacuum Cleaner',
       price: 649.99,
       originalPrice: 749.99,
-      image: '/placeholder.svg',
+      image: dysonVacuumImage,
       rating: 4.7,
       reviews: 756,
       category: 'Home & Kitchen',
