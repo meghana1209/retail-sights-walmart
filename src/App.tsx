@@ -2,31 +2,40 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import HomePage from "./components/HomePage";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import CustomerDashboard from "./components/CustomerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
-type UserRole = 'customer' | 'admin' | null;
 type Page = 'home' | 'login' | 'customer-login' | 'admin-login' | 'register' | 'dashboard' | 'cart' | 'orders' | 'analytics';
 
-const App = () => {
+const AppContent = () => {
+  const { user, userRole, loading, signOut } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [userRole, setUserRole] = useState<UserRole>(null);
   const [cartCount, setCartCount] = useState(0);
 
-  const handleLogin = (role: UserRole) => {
-    setUserRole(role);
-    setCurrentPage('dashboard');
-  };
+  // Redirect to dashboard when user logs in
+  useEffect(() => {
+    if (user && userRole && currentPage !== 'dashboard') {
+      setCurrentPage('dashboard');
+    }
+  }, [user, userRole]);
 
-  const handleLogout = () => {
-    setUserRole(null);
+  // Redirect to home when user logs out
+  useEffect(() => {
+    if (!user && currentPage === 'dashboard') {
+      setCurrentPage('home');
+    }
+  }, [user, currentPage]);
+
+  const handleLogout = async () => {
+    await signOut();
     setCurrentPage('home');
   };
 
@@ -51,20 +60,26 @@ const App = () => {
   };
 
   const renderPage = () => {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={handleNavigate} />;
       case 'login':
-        const initialTab = currentPage === 'login' ? 'customer' : 'admin';
         return (
           <LoginPage 
-            onLogin={handleLogin} 
             onNavigate={handleNavigate}
-            initialTab={initialTab}
+            initialTab="customer"
           />
         );
       case 'register':
-        return <RegisterPage onRegister={() => setCurrentPage('login')} onNavigate={handleNavigate} />;
+        return <RegisterPage onNavigate={handleNavigate} />;
       case 'dashboard':
         if (userRole === 'customer') {
           return <CustomerDashboard />;
@@ -78,21 +93,29 @@ const App = () => {
   };
 
   return (
+    <div className="min-h-screen bg-background">
+      <Header 
+        userRole={userRole} 
+        cartCount={cartCount}
+        onNavigate={handleNavigate}
+      />
+      <main>
+        {renderPage()}
+      </main>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          <Header 
-            userRole={userRole} 
-            cartCount={cartCount}
-            onNavigate={handleNavigate}
-          />
-          <main>
-            {renderPage()}
-          </main>
-        </div>
-        <Toaster />
-        <Sonner />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <AppContent />
+          <Toaster />
+          <Sonner />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

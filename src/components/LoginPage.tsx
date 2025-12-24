@@ -7,15 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingBag, BarChart3, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
 interface LoginPageProps {
-  onLogin: (role: 'customer' | 'admin') => void;
   onNavigate: (page: string) => void;
   initialTab?: 'customer' | 'admin';
 }
 
-const LoginPage = ({ onLogin, onNavigate, initialTab = 'customer' }: LoginPageProps) => {
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const LoginPage = ({ onNavigate, initialTab = 'customer' }: LoginPageProps) => {
   const { toast } = useToast();
+  const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentTab, setCurrentTab] = useState(initialTab);
   
@@ -29,34 +36,50 @@ const LoginPage = ({ onLogin, onNavigate, initialTab = 'customer' }: LoginPagePr
     password: ''
   });
 
-  const handleCustomerLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent, role: 'customer' | 'admin') => {
     e.preventDefault();
+    
+    const form = role === 'customer' ? customerForm : adminForm;
+    
+    // Validate form
+    const result = loginSchema.safeParse(form);
+    if (!result.success) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: result.error.errors[0].message,
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Welcome back!",
-        description: "Successfully logged in as customer.",
-      });
-      onLogin('customer');
-    }, 1500);
-  };
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+    const { error } = await signIn(form.email, form.password);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    setIsLoading(false);
+    
+    if (error) {
+      let message = error.message;
+      if (error.message.includes('Invalid login credentials')) {
+        message = 'Invalid email or password. Please try again.';
+      } else if (error.message.includes('Email not confirmed')) {
+        message = 'Please confirm your email before signing in.';
+      }
+      
       toast({
-        title: "Admin access granted",
-        description: "Successfully logged in to sales dashboard.",
+        variant: "destructive",
+        title: "Login Failed",
+        description: message,
       });
-      onLogin('admin');
-    }, 1500);
+      return;
+    }
+    
+    toast({
+      title: role === 'customer' ? "Welcome back!" : "Admin access granted",
+      description: role === 'customer' 
+        ? "Successfully logged in as customer." 
+        : "Successfully logged in to sales dashboard.",
+    });
   };
 
   return (
@@ -106,7 +129,7 @@ const LoginPage = ({ onLogin, onNavigate, initialTab = 'customer' }: LoginPagePr
                   </p>
                 </div>
                 
-                <form onSubmit={handleCustomerLogin} className="space-y-4">
+                <form onSubmit={(e) => handleLogin(e, 'customer')} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="customer-email">Email</Label>
                     <Input
@@ -145,7 +168,7 @@ const LoginPage = ({ onLogin, onNavigate, initialTab = 'customer' }: LoginPagePr
                   </p>
                 </div>
                 
-                <form onSubmit={handleAdminLogin} className="space-y-4">
+                <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="admin-email">Admin Email</Label>
                     <Input

@@ -6,14 +6,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, User, Mail, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
 interface RegisterPageProps {
-  onRegister: () => void;
   onNavigate: (page: string) => void;
 }
 
-const RegisterPage = ({ onRegister, onNavigate }: RegisterPageProps) => {
+const registerSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  agreeToTerms: z.boolean(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+}).refine((data) => data.agreeToTerms, {
+  message: "You must agree to the terms and conditions",
+  path: ["agreeToTerms"],
+});
+
+const RegisterPage = ({ onNavigate }: RegisterPageProps) => {
   const { toast } = useToast();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: '',
@@ -27,35 +44,42 @@ const RegisterPage = ({ onRegister, onNavigate }: RegisterPageProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (form.password !== form.confirmPassword) {
+    // Validate form
+    const result = registerSchema.safeParse(form);
+    if (!result.success) {
       toast({
         variant: "destructive",
-        title: "Password mismatch",
-        description: "Please make sure your passwords match.",
-      });
-      return;
-    }
-    
-    if (!form.agreeToTerms) {
-      toast({
-        variant: "destructive",
-        title: "Terms required",
-        description: "Please agree to the terms and conditions.",
+        title: "Validation Error",
+        description: result.error.errors[0].message,
       });
       return;
     }
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    const fullName = `${form.firstName} ${form.lastName}`;
+    const { error } = await signUp(form.email, form.password, fullName, 'customer');
+    
+    setIsLoading(false);
+    
+    if (error) {
+      let message = error.message;
+      if (error.message.includes('User already registered')) {
+        message = 'An account with this email already exists. Please sign in instead.';
+      }
+      
       toast({
-        title: "Account created successfully!",
-        description: "Welcome to Walmart! You can now sign in.",
+        variant: "destructive",
+        title: "Registration Failed",
+        description: message,
       });
-      onRegister();
-    }, 2000);
+      return;
+    }
+    
+    toast({
+      title: "Account created successfully!",
+      description: "Welcome to Walmart! You are now signed in.",
+    });
   };
 
   return (
