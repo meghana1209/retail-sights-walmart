@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -10,85 +12,158 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Download,
-  Calendar
+  Calendar,
+  Package,
+  AlertTriangle,
+  Bell,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
+import { useProducts, useCategories } from '@/hooks/useProducts';
+import { useOrders } from '@/hooks/useOrders';
+import { useInventoryAlerts } from '@/hooks/useInventoryAlerts';
+import { useNotifyRequests } from '@/hooks/useNotifyRequests';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import ProductManagement from './admin/ProductManagement';
+import OrderManagement from './admin/OrderManagement';
+import InventoryAlerts from './admin/InventoryAlerts';
+
+const COLORS = ['#0041C2', '#F6BE00', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
 const AdminDashboard = () => {
-  // Mock analytics data
+  const { toast } = useToast();
+  const { products, loading: productsLoading } = useProducts();
+  const { categories } = useCategories();
+  const { orders, loading: ordersLoading } = useOrders();
+  const { lowStockProducts, alerts } = useInventoryAlerts();
+  const { requests: notifyRequests, getDemandCount } = useNotifyRequests();
+  const [seeding, setSeeding] = useState(false);
+
+  // Calculate KPIs
+  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+  const totalOrders = orders.length;
+  const activeCustomers = new Set(orders.map(o => o.user_id)).size;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // Sales by category
+  const categoryRevenue = categories.map(cat => {
+    const catProducts = products.filter(p => p.category_id === cat.id);
+    const catProductIds = new Set(catProducts.map(p => p.id));
+    
+    let revenue = 0;
+    orders.forEach(order => {
+      order.order_items?.forEach(item => {
+        if (catProductIds.has(item.product_id)) {
+          revenue += Number(item.price) * item.quantity;
+        }
+      });
+    });
+    
+    return { name: cat.name, value: revenue };
+  }).filter(c => c.value > 0);
+
+  // Top selling products
+  const productSales: Record<string, { name: string; quantity: number; revenue: number }> = {};
+  orders.forEach(order => {
+    order.order_items?.forEach(item => {
+      const key = item.product_id;
+      if (!productSales[key]) {
+        productSales[key] = {
+          name: item.products?.name || 'Unknown',
+          quantity: 0,
+          revenue: 0,
+        };
+      }
+      productSales[key].quantity += item.quantity;
+      productSales[key].revenue += Number(item.price) * item.quantity;
+    });
+  });
+
+  const topProducts = Object.values(productSales)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  // Monthly revenue trend
+  const monthlyRevenue = orders.reduce((acc, order) => {
+    if (!order.created_at) return acc;
+    const month = format(new Date(order.created_at), 'MMM yyyy');
+    acc[month] = (acc[month] || 0) + Number(order.total_amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const revenueChartData = Object.entries(monthlyRevenue)
+    .map(([month, revenue]) => ({ month, revenue }))
+    .slice(-6);
+
+  const seedProducts = async () => {
+    setSeeding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-products');
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Products seeded!',
+        description: data.message,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error seeding products',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const kpis = [
     {
       title: 'Total Revenue',
-      value: '$2,847,392',
-      change: '+12.5%',
-      trend: 'up',
+      value: `$${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
-      description: 'vs last month'
+      color: 'text-success',
     },
     {
       title: 'Total Orders',
-      value: '18,427',
-      change: '+8.3%',
-      trend: 'up',
+      value: totalOrders.toLocaleString(),
       icon: ShoppingCart,
-      description: 'vs last month'
+      color: 'text-primary',
     },
     {
       title: 'Active Customers',
-      value: '142,539',
-      change: '+15.2%',
-      trend: 'up',
+      value: activeCustomers.toLocaleString(),
       icon: Users,
-      description: 'vs last month'
+      color: 'text-secondary',
     },
     {
-      title: 'Conversion Rate',
-      value: '3.24%',
-      change: '-2.1%',
-      trend: 'down',
+      title: 'Avg Order Value',
+      value: `$${avgOrderValue.toFixed(2)}`,
       icon: TrendingUp,
-      description: 'vs last month'
-    }
+      color: 'text-primary',
+    },
   ];
-
-  const topProducts = [
-    { name: 'iPhone 15 Pro Max', sales: 1247, revenue: '$1,246,753', category: 'Electronics' },
-    { name: 'Samsung 65" QLED TV', sales: 893, revenue: '$714,407', category: 'Electronics' },
-    { name: 'Nike Air Max 270', sales: 567, revenue: '$73,683', category: 'Clothing' },
-    { name: 'KitchenAid Mixer', sales: 445, revenue: '$133,495', category: 'Home & Kitchen' },
-    { name: 'Dyson V15 Vacuum', sales: 334, revenue: '$217,166', category: 'Home & Kitchen' }
-  ];
-
-  const recentOrders = [
-    { id: '#12847', customer: 'John Smith', total: '$1,299.98', status: 'Delivered', time: '2 hours ago' },
-    { id: '#12846', customer: 'Sarah Johnson', total: '$89.99', status: 'Processing', time: '3 hours ago' },
-    { id: '#12845', customer: 'Mike Davis', total: '$456.50', status: 'Shipped', time: '5 hours ago' },
-    { id: '#12844', customer: 'Emily Brown', total: '$234.99', status: 'Delivered', time: '1 day ago' },
-    { id: '#12843', customer: 'David Wilson', total: '$678.25', status: 'Processing', time: '1 day ago' }
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered': return 'bg-success text-success-foreground';
-      case 'Shipped': return 'bg-primary text-primary-foreground';
-      case 'Processing': return 'bg-secondary text-secondary-foreground';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Sales Analytics Dashboard</h1>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your sales today.
+            Manage your store and track performance
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Calendar className="w-4 h-4 mr-2" />
-            Last 30 days
+          <Button variant="outline" onClick={seedProducts} disabled={seeding}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${seeding ? 'animate-spin' : ''}`} />
+            {seeding ? 'Seeding...' : 'Seed Products'}
           </Button>
           <Button>
             <Download className="w-4 h-4 mr-2" />
@@ -97,119 +172,271 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Low Stock Alerts */}
+      {lowStockProducts.length > 0 && (
+        <Card className="mb-6 border-destructive bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              Low Stock Alert ({lowStockProducts.length} products)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {lowStockProducts.slice(0, 5).map((product) => (
+                <Badge key={product.id} variant="outline" className="border-destructive text-destructive">
+                  {product.name} - {product.stock} left
+                </Badge>
+              ))}
+              {lowStockProducts.length > 5 && (
+                <Badge variant="secondary">+{lowStockProducts.length - 5} more</Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-              <kpi.icon className="h-4 w-4 text-muted-foreground" />
+              <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpi.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                <span className={`flex items-center ${
-                  kpi.trend === 'up' ? 'text-success' : 'text-destructive'
-                }`}>
-                  {kpi.trend === 'up' ? (
-                    <ArrowUpRight className="w-3 h-3 mr-1" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3 mr-1" />
-                  )}
-                  {kpi.change}
-                </span>
-                <span className="ml-2">{kpi.description}</span>
-              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Top Products */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
-            <CardDescription>
-              Best performing products this month
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-semibold">{product.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {product.sales} units sold
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-success">{product.revenue}</div>
-                    <Badge variant="outline" className="text-xs">
-                      {product.category}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs for different sections */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="products">Products ({products.length})</TabsTrigger>
+          <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
+          <TabsTrigger value="inventory">
+            Inventory
+            {lowStockProducts.length > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {lowStockProducts.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="demand">
+            Demand
+            {notifyRequests.filter(r => !r.notified).length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {notifyRequests.filter(r => !r.notified).length}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>
-              Latest customer orders and their status
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <div className="font-semibold">{order.id}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {order.customer}
-                    </div>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Revenue Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue Trend</CardTitle>
+                <CardDescription>Monthly revenue over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {revenueChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={revenueChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Revenue']} />
+                      <Line type="monotone" dataKey="revenue" stroke="#0041C2" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No order data yet
                   </div>
-                  <div className="text-center">
-                    <div className="font-bold">{order.total}</div>
-                    <Badge className={`text-xs ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground text-right">
-                    {order.time}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                )}
+              </CardContent>
+            </Card>
 
-      {/* Sales Chart Placeholder */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Sales Trends</CardTitle>
-          <CardDescription>
-            Revenue and order volume over time
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg">
-            <div className="text-center">
-              <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-              <div className="text-lg font-semibold">Interactive Sales Chart</div>
-              <div className="text-muted-foreground">
-                Chart visualization would be implemented here using Chart.js or Recharts
-              </div>
-            </div>
+            {/* Category Sales */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales by Category</CardTitle>
+                <CardDescription>Revenue distribution across categories</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {categoryRevenue.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={categoryRevenue}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {categoryRevenue.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Revenue']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No sales data yet
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Top Products */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Selling Products</CardTitle>
+                <CardDescription>Best performing products</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topProducts.length > 0 ? (
+                  <div className="space-y-4">
+                    {topProducts.map((product, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-semibold line-clamp-1">{product.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {product.quantity} units sold
+                          </div>
+                        </div>
+                        <div className="font-bold text-success">
+                          ${product.revenue.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No sales data yet
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Orders */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
+                <CardDescription>Latest customer orders</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {orders.length > 0 ? (
+                  <div className="space-y-4">
+                    {orders.slice(0, 5).map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <div className="font-semibold">#{order.id.slice(0, 8).toUpperCase()}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {order.created_at && format(new Date(order.created_at), 'MMM d, h:mm a')}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-bold">${Number(order.total_amount).toFixed(2)}</div>
+                          <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
+                            {order.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No orders yet
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Products Tab */}
+        <TabsContent value="products">
+          <ProductManagement />
+        </TabsContent>
+
+        {/* Orders Tab */}
+        <TabsContent value="orders">
+          <OrderManagement />
+        </TabsContent>
+
+        {/* Inventory Tab */}
+        <TabsContent value="inventory">
+          <InventoryAlerts />
+        </TabsContent>
+
+        {/* Demand Tab */}
+        <TabsContent value="demand">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Customer Demand (Notify Me Requests)
+              </CardTitle>
+              <CardDescription>
+                Products customers want to be notified about when back in stock
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {notifyRequests.filter(r => !r.notified).length > 0 ? (
+                <div className="space-y-4">
+                  {/* Group by product */}
+                  {Array.from(new Set(notifyRequests.filter(r => !r.notified).map(r => r.product_id)))
+                    .map(productId => {
+                      const product = notifyRequests.find(r => r.product_id === productId)?.products;
+                      const count = getDemandCount(productId);
+                      
+                      return (
+                        <div key={productId} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={product?.image_url}
+                              alt={product?.name}
+                              className="w-16 h-16 object-cover rounded-lg"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?w=400';
+                              }}
+                            />
+                            <div>
+                              <div className="font-semibold line-clamp-1">{product?.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Current stock: {product?.stock || 0}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="text-lg">
+                            {count} requests
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  No pending notify requests
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

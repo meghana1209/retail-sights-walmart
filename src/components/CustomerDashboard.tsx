@@ -3,118 +3,40 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import ProductCard from './ProductCard';
-import { Search, Filter, SlidersHorizontal } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-// Import product images
-import iphoneImage from '@/assets/iphone-15-pro-max.jpg';
-import samsungTvImage from '@/assets/samsung-tv.jpg';
-import nikeAirMaxImage from '@/assets/nike-air-max.jpg';
-import kitchenaidMixerImage from '@/assets/kitchenaid-mixer.jpg';
-import organicMilkImage from '@/assets/organic-milk.jpg';
-import dysonVacuumImage from '@/assets/dyson-vacuum.jpg';
+import { Search, Filter, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { useProducts, useCategories } from '@/hooks/useProducts';
+import { useCart } from '@/hooks/useCart';
+import { useNotifyRequests } from '@/hooks/useNotifyRequests';
 
 const CustomerDashboard = () => {
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [cartCount, setCartCount] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  const { categories, loading: categoriesLoading } = useCategories();
+  const { products, loading: productsLoading } = useProducts(
+    selectedCategory === 'all' ? undefined : selectedCategory,
+    debouncedSearch || undefined
+  );
+  const { addToCart } = useCart();
+  const { createNotifyRequest } = useNotifyRequests();
 
-  // Mock product data
-  const products = [
-    {
-      id: '1',
-      name: 'Apple iPhone 15 Pro Max 256GB Natural Titanium',
-      price: 999.99,
-      originalPrice: 1199.99,
-      image: iphoneImage,
-      rating: 4.8,
-      reviews: 1247,
-      category: 'Electronics',
-      inStock: true
-    },
-    {
-      id: '2',
-      name: 'Samsung 65" 4K QLED Smart TV with HDR',
-      price: 799.99,
-      originalPrice: 1099.99,
-      image: samsungTvImage,
-      rating: 4.6,
-      reviews: 893,
-      category: 'Electronics',
-      inStock: true
-    },
-    {
-      id: '3',
-      name: 'Nike Air Max 270 Running Shoes - Black/White',
-      price: 129.99,
-      originalPrice: 149.99,
-      image: nikeAirMaxImage,
-      rating: 4.5,
-      reviews: 567,
-      category: 'Clothing & Shoes',
-      inStock: true
-    },
-    {
-      id: '4',
-      name: 'KitchenAid Stand Mixer - 5 Quart Artisan Series',
-      price: 299.99,
-      originalPrice: 379.99,
-      image: kitchenaidMixerImage,
-      rating: 4.9,
-      reviews: 2134,
-      category: 'Home & Kitchen',
-      inStock: false
-    },
-    {
-      id: '5',
-      name: 'Great Value Organic Whole Milk - 1 Gallon',
-      price: 4.98,
-      image: organicMilkImage,
-      rating: 4.3,
-      reviews: 445,
-      category: 'Groceries',
-      inStock: true
-    },
-    {
-      id: '6',
-      name: 'Dyson V15 Detect Cordless Vacuum Cleaner',
-      price: 649.99,
-      originalPrice: 749.99,
-      image: dysonVacuumImage,
-      rating: 4.7,
-      reviews: 756,
-      category: 'Home & Kitchen',
-      inStock: true
-    }
-  ];
+  // Debounce search
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const categories = [
-    'All Categories',
-    'Electronics',
-    'Clothing & Shoes',
-    'Home & Kitchen',
-    'Groceries',
-    'Health & Beauty',
-    'Sports & Outdoors'
-  ];
+  const handleAddToCart = async (productId: string) => {
+    await addToCart(productId, 1);
+  };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || 
-                           selectedCategory === 'All Categories' || 
-                           product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleAddToCart = (productId: string) => {
-    setCartCount(prev => prev + 1);
-    const product = products.find(p => p.id === productId);
-    toast({
-      title: "Added to cart",
-      description: `${product?.name} has been added to your cart.`,
-    });
+  const handleNotifyMe = async (productId: string) => {
+    await createNotifyRequest(productId);
   };
 
   return (
@@ -139,12 +61,10 @@ const CustomerDashboard = () => {
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
               {categories.map((category) => (
-                <SelectItem 
-                  key={category} 
-                  value={category === 'All Categories' ? 'all' : category}
-                >
-                  {category}
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -160,12 +80,12 @@ const CustomerDashboard = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold">
-            {selectedCategory === 'all' || selectedCategory === 'All Categories' 
+            {selectedCategory === 'all' 
               ? 'All Products' 
-              : selectedCategory}
+              : categories.find(c => c.id === selectedCategory)?.name || 'Products'}
           </h2>
           <p className="text-muted-foreground">
-            {filteredProducts.length} results found
+            {products.length} results found
             {searchTerm && ` for "${searchTerm}"`}
           </p>
         </div>
@@ -179,13 +99,28 @@ const CustomerDashboard = () => {
       </div>
 
       {/* Product Grid */}
-      {filteredProducts.length > 0 ? (
+      {productsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-48 w-full rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : products.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {products.map((product) => (
             <ProductCard
               key={product.id}
-              product={product}
+              product={{
+                ...product,
+                categories: product.categories as { name: string } | null,
+              }}
               onAddToCart={handleAddToCart}
+              onNotifyMe={handleNotifyMe}
             />
           ))}
         </div>
@@ -208,25 +143,33 @@ const CustomerDashboard = () => {
       {/* Quick Categories */}
       <section className="mt-16">
         <h3 className="text-xl font-semibold mb-6">Shop by Category</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {categories.slice(1).map((category) => (
-            <Button
-              key={category}
-              variant="outline"
-              className="h-20 flex-col space-y-2 hover:bg-primary hover:text-primary-foreground"
-              onClick={() => setSelectedCategory(category)}
-            >
-              <div className="text-2xl">
-                {category === 'Electronics' && '📱'}
-                {category === 'Clothing & Shoes' && '👕'}
-                {category === 'Home & Kitchen' && '🏠'}
-                {category === 'Groceries' && '🛒'}
-                {category === 'Health & Beauty' && '💄'}
-                {category === 'Sports & Outdoors' && '⚽'}
-              </div>
-              <span className="text-xs text-center">{category}</span>
-            </Button>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          {categoriesLoading ? (
+            [...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))
+          ) : (
+            categories.map((category) => (
+              <Button
+                key={category.id}
+                variant="outline"
+                className="h-20 flex-col space-y-2 hover:bg-primary hover:text-primary-foreground"
+                onClick={() => setSelectedCategory(category.id)}
+              >
+                <div className="text-2xl">
+                  {category.name === 'Electronics' && '📱'}
+                  {category.name === 'Groceries' && '🛒'}
+                  {category.name === 'Clothing & Shoes' && '👕'}
+                  {category.name === 'Home & Kitchen' && '🏠'}
+                  {category.name === 'Sports & Outdoors' && '⚽'}
+                  {category.name === 'Toys & Games' && '🎮'}
+                  {category.name === 'Beauty & Personal Care' && '💄'}
+                  {category.name === 'Baby & Kids' && '👶'}
+                </div>
+                <span className="text-xs text-center line-clamp-1">{category.name}</span>
+              </Button>
+            ))
+          )}
         </div>
       </section>
     </div>
