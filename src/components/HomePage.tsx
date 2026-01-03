@@ -66,7 +66,7 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => onNavigate('customer-login')}
+                onClick={() => onNavigate('login')}
                 className="text-lg px-8 py-4"
               >
                 <ShoppingBag className="w-5 h-5 mr-2" />
@@ -74,9 +74,8 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
               </Button>
               <Button
                 size="lg"
-                variant="outline"
-                onClick={() => onNavigate('admin-login')}
-                className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-primary"
+                onClick={() => onNavigate('login')}
+                className="text-lg px-8 py-4 bg-white/10 border-2 border-white text-white hover:bg-white hover:text-primary"
               >
                 <BarChart3 className="w-5 h-5 mr-2" />
                 Sales Portal
@@ -163,9 +162,8 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              onClick={() => onNavigate('about')}
-              className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-primary"
+              onClick={() => onNavigate('login')}
+              className="text-lg px-8 py-4 bg-white/10 border-2 border-white text-white hover:bg-white hover:text-primary"
             >
               Learn More
             </Button>

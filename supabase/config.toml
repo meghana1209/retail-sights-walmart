@@ -1,1 +1,10 @@
 project_id = "tpkwbgjqvzznzpeyystl"
+
+[functions.seed-products]
+verify_jwt = true
+
+[functions.send-inventory-alert]
+verify_jwt = true
+
+[functions.notify-customer]
+verify_jwt = true

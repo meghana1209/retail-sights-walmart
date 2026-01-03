@@ -115,15 +115,20 @@ export const useOrders = () => {
 
       if (itemsError) throw itemsError;
 
-      // Update product stock
+      // Update product stock - using direct update since RPC types may not be updated yet
       for (const item of cartItems) {
-        const { error: stockError } = await supabase.rpc('decrement_stock', {
-          product_id: item.product_id,
-          quantity: item.quantity,
-        });
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.product_id)
+          .single();
         
-        if (stockError) {
-          console.error('Error updating stock:', stockError);
+        if (product) {
+          const newStock = Math.max((product.stock || 0) - item.quantity, 0);
+          await supabase
+            .from('products')
+            .update({ stock: newStock })
+            .eq('id', item.product_id);
         }
       }
 

@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, User, Mail, Lock } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ArrowLeft, User, Mail, Lock, ShoppingBag, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
@@ -19,6 +20,7 @@ const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
+  role: z.enum(['customer', 'admin']),
   agreeToTerms: z.boolean(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -38,6 +40,7 @@ const RegisterPage = ({ onNavigate }: RegisterPageProps) => {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'customer' as 'customer' | 'admin',
     agreeToTerms: false
   });
 
@@ -58,7 +61,7 @@ const RegisterPage = ({ onNavigate }: RegisterPageProps) => {
     setIsLoading(true);
     
     const fullName = `${form.firstName} ${form.lastName}`;
-    const { error } = await signUp(form.email, form.password, fullName, 'customer');
+    const { error } = await signUp(form.email, form.password, fullName, form.role);
     
     setIsLoading(false);
     
@@ -133,7 +136,31 @@ const RegisterPage = ({ onNavigate }: RegisterPageProps) => {
                     onChange={(e) => setForm(prev => ({ ...prev, lastName: e.target.value }))}
                     required
                   />
-                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label>Account Type</Label>
+                <RadioGroup
+                  value={form.role}
+                  onValueChange={(value) => setForm(prev => ({ ...prev, role: value as 'customer' | 'admin' }))}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:border-primary">
+                    <RadioGroupItem value="customer" id="customer" />
+                    <Label htmlFor="customer" className="flex items-center gap-2 cursor-pointer">
+                      <ShoppingBag className="w-4 h-4" />
+                      Customer
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:border-primary">
+                    <RadioGroupItem value="admin" id="admin" />
+                    <Label htmlFor="admin" className="flex items-center gap-2 cursor-pointer">
+                      <BarChart3 className="w-4 h-4" />
+                      Admin
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
               </div>
               
               <div className="space-y-2">
