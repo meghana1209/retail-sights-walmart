@@ -12,11 +12,14 @@ import AdminDashboard from "./components/AdminDashboard";
 import CartPage from "./components/CartPage";
 import OrdersPage from "./components/OrdersPage";
 import CustomerAnalytics from "./components/CustomerAnalytics";
+import { BudgetingDashboard } from "./components/BudgetingDashboard";
+import { AIInsightsDashboard } from "./components/AIInsightsDashboard";
+import { NotificationPage } from "./components/NotificationCenter";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
-type Page = 'home' | 'login' | 'register' | 'dashboard' | 'cart' | 'orders' | 'analytics';
+type Page = 'home' | 'login' | 'register' | 'dashboard' | 'cart' | 'orders' | 'analytics' | 'budgets' | 'ai-insights' | 'notifications';
 
 const AppContent = () => {
   const { user, userRole, loading, signOut } = useAuth();
@@ -94,6 +97,33 @@ const AppContent = () => {
       case 'analytics':
         if (userRole === 'customer') {
           return <CustomerAnalytics onNavigate={handleNavigate} />;
+        }
+        return <HomePage onNavigate={handleNavigate} />;
+      case 'budgets':
+        if (userRole === 'customer') {
+          return (
+            <div className="container mx-auto px-4 py-8">
+              <BudgetingDashboard />
+            </div>
+          );
+        }
+        return <HomePage onNavigate={handleNavigate} />;
+      case 'ai-insights':
+        if (userRole === 'customer') {
+          return (
+            <div className="container mx-auto px-4 py-8">
+              <AIInsightsDashboard />
+            </div>
+          );
+        }
+        return <HomePage onNavigate={handleNavigate} />;
+      case 'notifications':
+        if (userRole === 'customer') {
+          return (
+            <div className="container mx-auto px-4 py-8">
+              <NotificationPage />
+            </div>
+          );
         }
         return <HomePage onNavigate={handleNavigate} />;
       default:

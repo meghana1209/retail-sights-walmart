@@ -10,10 +10,13 @@ import {
   BarChart3,
   LogOut,
   Home,
-  Menu
+  Menu,
+  PiggyBank,
+  Brain
 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationBell } from '@/components/NotificationCenter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,12 +88,34 @@ const Header = ({ userRole, onNavigate }: HeaderProps) => {
                 <Button 
                   variant="ghost" 
                   size="sm"
+                  onClick={() => onNavigate('budgets')}
+                  className="text-primary-foreground hover:bg-primary/80 hidden sm:flex"
+                >
+                  <PiggyBank className="w-4 h-4 mr-2" />
+                  Budgets
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => onNavigate('ai-insights')}
+                  className="text-primary-foreground hover:bg-primary/80 hidden sm:flex"
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  AI Insights
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
                   onClick={() => onNavigate('analytics')}
                   className="text-primary-foreground hover:bg-primary/80 hidden sm:flex"
                 >
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Analytics
                 </Button>
+                
+                {/* Notification Bell */}
+                <NotificationBell />
+                
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -120,6 +145,14 @@ const Header = ({ userRole, onNavigate }: HeaderProps) => {
                     <DropdownMenuItem onClick={() => onNavigate('orders')}>
                       <Package className="w-4 h-4 mr-2" />
                       Orders
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onNavigate('budgets')}>
+                      <PiggyBank className="w-4 h-4 mr-2" />
+                      Budgets
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onNavigate('ai-insights')}>
+                      <Brain className="w-4 h-4 mr-2" />
+                      AI Insights
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNavigate('analytics')}>
                       <BarChart3 className="w-4 h-4 mr-2" />
