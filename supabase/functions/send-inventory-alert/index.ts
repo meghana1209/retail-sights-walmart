@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+
+// Dynamic import for Resend to avoid build-time resolution issues
+const getResend = async () => {
+  const { Resend } = await import("https://esm.sh/resend@2.0.0");
+  return Resend;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +42,8 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`Sending inventory alert for: ${productName}`);
 
+    const Resend = await getResend();
     const resend = new Resend(resendApiKey);
-
     const emailResponse = await resend.emails.send({
       from: "Walmart Inventory <onboarding@resend.dev>",
       to: ["meghanab235@gmail.com"],
