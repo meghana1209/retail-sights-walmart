@@ -19,7 +19,7 @@ export const BudgetingDashboard = () => {
   const { categories } = useCategories();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('total');
   const [budgetAmount, setBudgetAmount] = useState('');
 
   const handleSubmit = async () => {
@@ -32,12 +32,12 @@ export const BudgetingDashboard = () => {
       if (editingBudget) {
         await updateBudget(editingBudget.id, Number(budgetAmount));
       } else {
-        await createBudget(selectedCategory || null, Number(budgetAmount));
+        await createBudget(selectedCategory === 'total' ? null : selectedCategory || null, Number(budgetAmount));
       }
       setIsDialogOpen(false);
       setEditingBudget(null);
       setBudgetAmount('');
-      setSelectedCategory('');
+      setSelectedCategory('total');
     } catch (error) {
       console.error('Error saving budget:', error);
     }
@@ -46,7 +46,7 @@ export const BudgetingDashboard = () => {
   const handleEdit = (budget: BudgetWithSpending) => {
     setEditingBudget(budget);
     setBudgetAmount(budget.monthly_limit.toString());
-    setSelectedCategory(budget.category_id || '');
+    setSelectedCategory(budget.category_id || 'total');
     setIsDialogOpen(true);
   };
 
@@ -109,7 +109,7 @@ export const BudgetingDashboard = () => {
                     <SelectValue placeholder="Select category or leave empty for total budget" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Total Monthly Budget</SelectItem>
+                    <SelectItem value="total">Total Monthly Budget</SelectItem>
                     {categories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
