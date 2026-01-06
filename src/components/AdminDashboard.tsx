@@ -123,6 +123,83 @@ const AdminDashboard = () => {
     }
   };
 
+  const exportReport = () => {
+    try {
+      // Build CSV content
+      const lines: string[] = [];
+      
+      // Summary section
+      lines.push('ADMIN DASHBOARD REPORT');
+      lines.push(`Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}`);
+      lines.push('');
+      
+      // KPIs
+      lines.push('KEY PERFORMANCE INDICATORS');
+      lines.push(`Total Revenue,$${totalRevenue.toFixed(2)}`);
+      lines.push(`Total Orders,${totalOrders}`);
+      lines.push(`Active Customers,${activeCustomers}`);
+      lines.push(`Average Order Value,$${avgOrderValue.toFixed(2)}`);
+      lines.push('');
+      
+      // Top Products
+      lines.push('TOP SELLING PRODUCTS');
+      lines.push('Product Name,Units Sold,Revenue');
+      topProducts.forEach(product => {
+        lines.push(`"${product.name}",${product.quantity},$${product.revenue.toFixed(2)}`);
+      });
+      lines.push('');
+      
+      // Category Revenue
+      lines.push('SALES BY CATEGORY');
+      lines.push('Category,Revenue');
+      categoryRevenue.forEach(cat => {
+        lines.push(`"${cat.name}",$${cat.value.toFixed(2)}`);
+      });
+      lines.push('');
+      
+      // Recent Orders
+      lines.push('RECENT ORDERS');
+      lines.push('Order ID,Date,Status,Total');
+      orders.slice(0, 20).forEach(order => {
+        const date = order.created_at ? format(new Date(order.created_at), 'yyyy-MM-dd') : 'N/A';
+        lines.push(`${order.id.slice(0, 8).toUpperCase()},${date},${order.status},$${Number(order.total_amount).toFixed(2)}`);
+      });
+      lines.push('');
+      
+      // Low Stock Products
+      if (lowStockProducts.length > 0) {
+        lines.push('LOW STOCK PRODUCTS');
+        lines.push('Product Name,Current Stock,Threshold');
+        lowStockProducts.forEach(product => {
+          lines.push(`"${product.name}",${product.stock},${product.threshold}`);
+        });
+      }
+      
+      // Create and download file
+      const csvContent = lines.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `admin-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Report exported',
+        description: 'Your report has been downloaded as a CSV file.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Export failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const kpis = [
     {
       title: 'Total Revenue',
@@ -165,7 +242,7 @@ const AdminDashboard = () => {
             <RefreshCw className={`w-4 h-4 mr-2 ${seeding ? 'animate-spin' : ''}`} />
             {seeding ? 'Seeding...' : 'Seed Products'}
           </Button>
-          <Button>
+          <Button onClick={exportReport}>
             <Download className="w-4 h-4 mr-2" />
             Export Report
           </Button>
