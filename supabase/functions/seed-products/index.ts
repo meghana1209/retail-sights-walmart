@@ -245,13 +245,35 @@ serve(async (req: Request) => {
       }
     }
 
-    // Clear existing products and insert new ones
-    const { error: deleteError } = await supabase
-      .from("products")
-      .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
+    // Get products that have order_items referencing them
+    const { data: productsWithOrders } = await supabase
+      .from("order_items")
+      .select("product_id");
+    
+    const referencedProductIds = new Set(
+      (productsWithOrders || []).map((item: any) => item.product_id)
+    );
 
-    if (deleteError) throw deleteError;
+    // Delete only products that don't have order references
+    if (referencedProductIds.size > 0) {
+      const { error: deleteError } = await supabase
+        .from("products")
+        .delete()
+        .not("id", "in", `(${Array.from(referencedProductIds).join(",")})`);
+
+      if (deleteError) {
+        console.log("Delete error (non-fatal):", deleteError);
+      }
+    } else {
+      const { error: deleteError } = await supabase
+        .from("products")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (deleteError) {
+        console.log("Delete error (non-fatal):", deleteError);
+      }
+    }
 
     // Insert in batches of 100
     const batchSize = 100;
