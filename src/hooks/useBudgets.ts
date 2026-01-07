@@ -145,10 +145,22 @@ export const useBudgets = () => {
     }
 
     toast.success('Budget created successfully');
+    
+    // Check budgets and generate alerts if needed
+    try {
+      await supabase.functions.invoke('check-budgets', {
+        body: { userId: user.id }
+      });
+    } catch (error) {
+      console.error('Error checking budgets:', error);
+    }
+    
     fetchBudgets();
   };
 
   const updateBudget = async (budgetId: string, monthlyLimit: number) => {
+    if (!user) return;
+    
     const { error } = await supabase
       .from('budgets')
       .update({ monthly_limit: monthlyLimit, updated_at: new Date().toISOString() })
@@ -160,6 +172,16 @@ export const useBudgets = () => {
     }
 
     toast.success('Budget updated successfully');
+    
+    // Check budgets and generate alerts if needed
+    try {
+      await supabase.functions.invoke('check-budgets', {
+        body: { userId: user.id }
+      });
+    } catch (error) {
+      console.error('Error checking budgets:', error);
+    }
+    
     fetchBudgets();
   };
 

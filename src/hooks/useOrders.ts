@@ -137,6 +137,15 @@ export const useOrders = () => {
         description: `Order #${order.id.slice(0, 8)} has been placed successfully`,
       });
 
+      // Check budgets and generate alerts if needed
+      try {
+        await supabase.functions.invoke('check-budgets', {
+          body: { userId: user.id }
+        });
+      } catch (budgetError) {
+        console.error('Error checking budgets:', budgetError);
+      }
+
       return order;
     } catch (err: any) {
       toast({
