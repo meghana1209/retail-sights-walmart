@@ -58,10 +58,28 @@ const handler = async (req: Request): Promise<Response> => {
       });
     });
 
+    // Fetch existing unread budget alerts to prevent duplicates
+    const { data: existingNotifications } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", userId)
+      .eq("type", "budget_alert")
+      .eq("is_read", false);
+
+    const existingBudgetAlerts = new Set(
+      existingNotifications?.map((n: any) => n.metadata?.budgetId) || []
+    );
+
     const notifications: any[] = [];
 
     // Check each budget
     for (const budget of budgets || []) {
+      // Skip if there's already an unread alert for this budget
+      if (existingBudgetAlerts.has(budget.id)) {
+        console.log(`Skipping duplicate alert for budget ${budget.id}`);
+        continue;
+      }
+
       const spent = budget.category_id 
         ? categorySpending[budget.category_id] || 0 
         : totalMonthSpent;
@@ -111,6 +129,9 @@ const handler = async (req: Request): Promise<Response> => {
       if (insertError) {
         console.error("Error inserting notifications:", insertError);
       }
+      console.log(`Created ${notifications.length} budget alert(s) for user ${userId}`);
+    } else {
+      console.log(`No new budget alerts needed for user ${userId}`);
     }
 
     return new Response(
